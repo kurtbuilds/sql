@@ -1,6 +1,6 @@
 use convert_case::{Case, Casing};
-use sqlmo::util::pkey_column_names;
-use sqlmo::{Column, Schema, Table, Type};
+use sql::util::pkey_column_names;
+use sql::{Column, Schema, Table, Type};
 
 use openapiv3 as oa;
 
@@ -65,7 +65,7 @@ fn oaschema_to_sqltype(
     schema: &oa::Schema,
     options: &FromOpenApiOptions,
 ) -> anyhow::Result<Option<Type>> {
-    use sqlmo::Type::*;
+    use sql::Type::*;
     let s = match &schema.kind {
         oa::SchemaKind::Type(oa::Type::String(s)) => match s.format.as_str() {
             "currency" => Numeric(19, 4),

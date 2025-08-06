@@ -1,10 +1,8 @@
-use std::str::FromStr;
 use anyhow::{Error, Result};
 use itertools::Itertools;
+use sql::{Column, Schema, Table, schema};
 use sqlx::PgConnection;
-
-use sqlmo::{Schema, Column, Table, schema};
-
+use std::str::FromStr;
 
 #[allow(async_fn_in_trait)]
 pub trait FromPostgres: Sized {
@@ -24,7 +22,10 @@ struct SchemaColumn {
     pub inner_type: Option<String>,
 }
 
-async fn query_schema_columns(conn: &mut PgConnection, schema_name: &str) -> Result<Vec<SchemaColumn>> {
+async fn query_schema_columns(
+    conn: &mut PgConnection,
+    schema_name: &str,
+) -> Result<Vec<SchemaColumn>> {
     let s = include_str!("sql/query_columns.sql");
     let result = sqlx::query_as::<_, SchemaColumn>(s)
         .bind(schema_name)
@@ -77,11 +78,18 @@ impl TryInto<Column> for SchemaColumn {
         let nullable = self.is_nullable == "YES";
         let typ = match self.data_type.as_str() {
             "ARRAY" => {
-                let inner = schema::Type::from_str(&self.inner_type.expect("Encounterd ARRAY with no inner type."))?;
+                let inner = schema::Type::from_str(
+                    &self
+                        .inner_type
+                        .expect("Encounterd ARRAY with no inner type."),
+                )?;
                 Array(Box::new(inner))
             }
             "numeric" if self.numeric_precision.is_some() && self.numeric_scale.is_some() => {
-                Numeric(self.numeric_precision.unwrap() as u8, self.numeric_scale.unwrap() as u8)
+                Numeric(
+                    self.numeric_precision.unwrap() as u8,
+                    self.numeric_scale.unwrap() as u8,
+                )
             }
             z => schema::Type::from_str(z)?,
         };
@@ -99,7 +107,8 @@ impl TryInto<Column> for SchemaColumn {
 impl FromPostgres for Schema {
     async fn try_from_postgres(conn: &mut PgConnection, schema_name: &str) -> Result<Schema> {
         let column_schemas = query_schema_columns(conn, schema_name).await?;
-        let mut tables = column_schemas.into_iter()
+        let mut tables = column_schemas
+            .into_iter()
             .chunk_by(|c| c.table_name.clone())
             .into_iter()
             .map(|(table_name, group)| {
@@ -117,8 +126,15 @@ impl FromPostgres for Schema {
 
         let constraints = query_constraints(conn, schema_name).await?;
         for fk in constraints {
-            let table = tables.iter_mut().find(|t| t.name == fk.table_name).expect("Constraint for unknown table.");
-            let column = table.columns.iter_mut().find(|c| c.name == fk.column_name).expect("Constraint for unknown column.");
+            let table = tables
+                .iter_mut()
+                .find(|t| t.name == fk.table_name)
+                .expect("Constraint for unknown table.");
+            let column = table
+                .columns
+                .iter_mut()
+                .find(|c| c.name == fk.column_name)
+                .expect("Constraint for unknown column.");
             column.constraint = Some(schema::Constraint::ForeignKey(schema::ForeignKey {
                 table: fk.foreign_table_name,
                 columns: vec![fk.foreign_column_name],

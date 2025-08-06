@@ -1,0 +1,19 @@
+[package]
+name = "kurtbuilds_sql_openapi"
+version.workspace = true
+edition.workspace = true
+description = "Crate to create sql models from openapi v3 spec"
+license = "MIT"
+repository = "https://github.com/kurtbuilds/sql"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+openapiv3 = { version = "6", package = "openapiv3-extended" }
+kurtbuilds_sql.workspace = true
+anyhow.workspace = true
+convert_case.workspace = true
+
+[dev-dependencies]
+serde_yaml = "0.9.34"
+serde_json = "1.0.128"

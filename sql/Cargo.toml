@@ -1,0 +1,23 @@
+[package]
+name = "kurtbuilds_sql"
+version.workspace = true
+edition.workspace = true
+documentation = "https://docs.rs/kurtbuilds_sql"
+homepage = "https://github.com/kurtbuilds/sql"
+
+[features]
+serde = []
+tracing = ["dep:tracing"]
+
+[lib]
+name = "sql"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+topo_sort.workspace = true
+tracing = { workspace = true, optional = true }
+
+[dev-dependencies]
+pretty_assertions.workspace = true

@@ -7,8 +7,8 @@ mod delete;
 mod drop_table;
 mod insert;
 mod select;
-mod update;
 mod union;
+mod update;
 
 pub use insert::*;
 pub use select::*;
