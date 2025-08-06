@@ -13,18 +13,6 @@ check:
 test *ARGS='':
     cargo test --all-features "$@"
 
-test-all:
-    just sqlmo_openapi/test
-    just sqlmo_sqlx/test
-    just test
-
-####
-bootstrap:
-    createdb $(extract path $DATABASE_URL)
-
-sql:
-    psql $DATABASE_URL
-
 watch:
     cargo watch
 

@@ -2,7 +2,7 @@
 name = "kurtbuilds_sql_sqlx"
 version.workspace = true
 edition.workspace = true
-description = "Crate to create sqlmo models from sqlx database (currently just postgres)"
+description = "Crate to create sql models from sqlx database (currently just postgres)"
 license = "MIT"
 repository = "https://github.com/kurtbuilds/sql"
 
