@@ -70,6 +70,57 @@ async fn query_constraints(conn: &mut PgConnection, schema_name: &str) -> Result
         .await?)
 }
 
+#[derive(sqlx::FromRow)]
+pub struct Index {
+    pub schemaname: String,
+    pub tablename: String,
+    pub indexname: String,
+    pub indexdef: String,
+}
+
+pub async fn query_indices(conn: &mut PgConnection, schema_name: &str) -> Result<Vec<Index>> {
+    let s = include_str!("sql/query_indices.sql");
+    Ok(sqlx::query_as::<_, Index>(s)
+        .bind(schema_name)
+        .fetch_all(conn)
+        .await?)
+}
+
+#[derive(sqlx::FromRow)]
+pub struct Function {
+    pub routine_schema: String,
+    pub routine_name: String,
+    pub routine_type: String,
+    pub data_type: Option<String>,
+    pub routine_definition: Option<String>,
+}
+
+pub async fn query_functions(conn: &mut PgConnection, schema_name: &str) -> Result<Vec<Function>> {
+    let s = include_str!("sql/query_functions.sql");
+    Ok(sqlx::query_as::<_, Function>(s)
+        .bind(schema_name)
+        .fetch_all(conn)
+        .await?)
+}
+
+#[derive(sqlx::FromRow)]
+pub struct Trigger {
+    pub trigger_schema: String,
+    pub trigger_name: String,
+    pub event_manipulation: String,
+    pub event_object_table: String,
+    pub action_timing: String,
+    pub action_statement: String,
+}
+
+pub async fn query_triggers(conn: &mut PgConnection, schema_name: &str) -> Result<Vec<Trigger>> {
+    let s = include_str!("sql/query_triggers.sql");
+    Ok(sqlx::query_as::<_, Trigger>(s)
+        .bind(schema_name)
+        .fetch_all(conn)
+        .await?)
+}
+
 impl TryInto<Column> for SchemaColumn {
     type Error = Error;
 

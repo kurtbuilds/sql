@@ -13,4 +13,5 @@ JOIN information_schema.key_column_usage AS kcu
 JOIN information_schema.constraint_column_usage AS ccu
     ON ccu.constraint_name = tc.constraint_name
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_schema=$1;
+    AND tc.table_schema=$1
+ORDER by tc.table_schema, tc.table_name, tc.constraint_name;
