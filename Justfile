@@ -47,6 +47,6 @@ patch: test
     just publish
 
 publish-all:
-    just sql/publish
-    just sql_sqlx/publish
-    just sql_openapi/publish
+    cargo publish -p kurtbuilds_sql
+    cargo publish -p kurtbuilds_sql_sqlx
+    cargo publish -p kurtbuilds_sql_openapi
