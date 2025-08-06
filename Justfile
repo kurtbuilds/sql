@@ -27,14 +27,11 @@ version level:
         git push origin v$VERSION
     git push
 
-publish:
-    cargo publish
-
 patch: test
     just version patch
     just publish
 
-publish-all:
+publish:
     cargo publish -p kurtbuilds_sql
     cargo publish -p kurtbuilds_sql_sqlx
     cargo publish -p kurtbuilds_sql_openapi

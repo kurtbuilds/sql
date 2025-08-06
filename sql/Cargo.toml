@@ -4,6 +4,8 @@ version.workspace = true
 edition.workspace = true
 documentation = "https://docs.rs/kurtbuilds_sql"
 homepage = "https://github.com/kurtbuilds/sql"
+license = "MIT"
+description = "Structs representing sql queries, enabling query building, migrations, and more"
 
 [features]
 serde = []
