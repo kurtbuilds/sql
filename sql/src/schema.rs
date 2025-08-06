@@ -1,16 +1,17 @@
+mod column;
+mod constraint;
+mod index;
 mod table;
 mod r#type;
-mod column;
-mod index;
-mod constraint;
 
 pub use column::Column;
-pub use r#type::Type;
-pub use table::Table;
 pub use constraint::{Constraint, ForeignKey};
+pub use index::Index;
+pub use table::Table;
+pub use r#type::Type;
 
+use crate::migrate::{Migration, MigrationOptions, migrate};
 use anyhow::Result;
-use crate::migrate::{Migration, migrate, MigrationOptions};
 
 /// Represents a SQL database schema.
 #[derive(Debug, Default, Clone)]

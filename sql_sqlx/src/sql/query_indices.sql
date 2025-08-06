@@ -1,12 +1,14 @@
 SELECT
-    schemaname,
-    tablename,
-    indexname,
-    indexdef
+    i.schemaname,
+    i.tablename,
+    i.indexname,
+    i.indexdef
 FROM
-    pg_indexes
+    pg_indexes i
+JOIN
+    pg_tables t ON i.schemaname = t.schemaname AND i.tablename = t.tablename
 WHERE
-    schemaname = $1
+    i.schemaname = $1
 ORDER BY
-    tablename,
-    indexname
+    i.tablename,
+    i.indexname

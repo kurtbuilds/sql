@@ -9,13 +9,13 @@ mod to_sql;
 pub mod util;
 
 #[doc(inline)]
-pub use migrate::{migrate, Migration, MigrationOptions};
+pub use migrate::{Migration, MigrationOptions, migrate};
 #[doc(inline)]
 pub use query::{
-    AlterTable, CreateIndex, CreateTable, Cte, CteQuery, Expr, From, Insert, Operation, OrderBy,
-    Select, SelectColumn, Union, Where,
+    AlterTable, CreateIndex, CreateTable, Cte, CteQuery, Expr, From, IndexType, Insert, Operation,
+    OrderBy, Select, SelectColumn, Union, Where,
 };
 #[doc(inline)]
-pub use schema::{Column, Constraint, Schema, Table, Type};
+pub use schema::{Column, Constraint, Index, Schema, Table, Type};
 #[doc(inline)]
 pub use to_sql::{Dialect, ToSql};

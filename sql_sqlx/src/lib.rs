@@ -10,7 +10,7 @@ pub trait FromPostgres: Sized {
 }
 
 #[derive(sqlx::FromRow)]
-struct SchemaColumn {
+pub struct SchemaColumn {
     pub table_name: String,
     pub column_name: String,
     #[allow(dead_code)]
@@ -22,7 +22,7 @@ struct SchemaColumn {
     pub inner_type: Option<String>,
 }
 
-async fn query_schema_columns(
+pub async fn query_schema_columns(
     conn: &mut PgConnection,
     schema_name: &str,
 ) -> Result<Vec<SchemaColumn>> {
@@ -41,7 +41,7 @@ struct TableSchema {
     pub table_name: String,
 }
 
-async fn query_table_names(conn: &mut PgConnection, schema_name: &str) -> Result<Vec<String>> {
+pub async fn query_table_names(conn: &mut PgConnection, schema_name: &str) -> Result<Vec<String>> {
     let s = include_str!("sql/query_tables.sql");
     let result = sqlx::query_as::<_, TableSchema>(s)
         .bind(schema_name)
@@ -50,9 +50,8 @@ async fn query_table_names(conn: &mut PgConnection, schema_name: &str) -> Result
     Ok(result.into_iter().map(|t| t.table_name).collect())
 }
 
-#[derive(sqlx::FromRow)]
-#[allow(dead_code)]
-struct ForeignKey {
+#[derive(Debug, sqlx::FromRow)]
+pub struct ForeignKey {
     pub table_schema: String,
     pub constraint_name: String,
     pub table_name: String,
@@ -62,7 +61,10 @@ struct ForeignKey {
     pub foreign_column_name: String,
 }
 
-async fn query_constraints(conn: &mut PgConnection, schema_name: &str) -> Result<Vec<ForeignKey>> {
+pub async fn query_constraints(
+    conn: &mut PgConnection,
+    schema_name: &str,
+) -> Result<Vec<ForeignKey>> {
     let s = include_str!("sql/query_constraints.sql");
     Ok(sqlx::query_as::<_, ForeignKey>(s)
         .bind(schema_name)
@@ -70,7 +72,7 @@ async fn query_constraints(conn: &mut PgConnection, schema_name: &str) -> Result
         .await?)
 }
 
-#[derive(sqlx::FromRow)]
+#[derive(Debug, sqlx::FromRow)]
 pub struct Index {
     pub schemaname: String,
     pub tablename: String,
@@ -79,6 +81,7 @@ pub struct Index {
 }
 
 pub async fn query_indices(conn: &mut PgConnection, schema_name: &str) -> Result<Vec<Index>> {
+    // because of pg_tables join, this only returns indices for tables, not views/mat views
     let s = include_str!("sql/query_indices.sql");
     Ok(sqlx::query_as::<_, Index>(s)
         .bind(schema_name)
@@ -174,13 +177,26 @@ impl FromPostgres for Schema {
                 })
             })
             .collect::<Result<Vec<_>, Error>>()?;
+        let mut it_tables = tables.iter_mut().peekable();
+        let indices = query_indices(conn, schema_name).await?;
+        for index in indices {
+            while &index.tablename != &it_tables.peek().unwrap().name {
+                it_tables.next();
+            }
+            let t = it_tables.peek_mut().unwrap();
+            t.indexes.push(sql::Index {
+                name: index.indexname,
+                columns: Vec::new(),
+            });
+        }
 
         let constraints = query_constraints(conn, schema_name).await?;
+        let mut it_tables = tables.iter_mut().peekable();
         for fk in constraints {
-            let table = tables
-                .iter_mut()
-                .find(|t| t.name == fk.table_name)
-                .expect("Constraint for unknown table.");
+            while &fk.table_name != &it_tables.peek().unwrap().name {
+                it_tables.next();
+            }
+            let table = it_tables.peek_mut().unwrap();
             let column = table
                 .columns
                 .iter_mut()
@@ -194,11 +210,16 @@ impl FromPostgres for Schema {
 
         // Degenerate case but you can have tables with no columns...
         let table_names = query_table_names(conn, schema_name).await?;
-        for name in table_names {
-            if tables.iter().any(|t| t.name == name) {
-                continue;
+        let mut tables_it = tables.iter().peekable();
+        let mut empty_tables = Vec::new();
+        'outer: for name in table_names {
+            while let Some(table) = tables_it.peek() {
+                if &name == &table.name {
+                    tables_it.next();
+                    continue 'outer;
+                }
             }
-            tables.push(Table {
+            empty_tables.push(Table {
                 schema: Some(schema_name.to_string()),
                 name,
                 columns: vec![],

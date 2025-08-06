@@ -15,3 +15,6 @@ kurtbuilds_sql.workspace = true
 sqlx = { version = "0.8.2", features = ["runtime-tokio-rustls", "postgres"] }
 anyhow.workspace = true
 itertools.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
