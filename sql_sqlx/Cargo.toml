@@ -6,7 +6,9 @@ description = "Crate to create sql models from sqlx database (currently just pos
 license = "MIT"
 repository = "https://github.com/kurtbuilds/sql"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "sql_sqlx"
+path = "src/lib.rs"
 
 [dependencies]
 kurtbuilds_sql.workspace = true
