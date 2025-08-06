@@ -89,7 +89,7 @@ pub async fn query_indices(conn: &mut PgConnection, schema_name: &str) -> Result
         .await?)
 }
 
-#[derive(sqlx::FromRow)]
+#[derive(Debug, sqlx::FromRow)]
 pub struct Function {
     pub routine_schema: String,
     pub routine_name: String,
