@@ -1,7 +1,7 @@
-use crate::{Dialect, ToSql, Type};
 use crate::query::Expr;
 use crate::schema::constraint::Constraint;
 use crate::util::SqlExtension;
+use crate::{Dialect, Generated, ToSql, Type};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -10,18 +10,32 @@ pub struct Column {
     pub typ: Type,
     pub nullable: bool,
     pub primary_key: bool,
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub default: Option<Expr>,
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
-    pub constraint: Option<Constraint>
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
+    pub constraint: Option<Constraint>,
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
+    pub generated: Option<Generated>,
 }
-
 
 impl ToSql for Column {
     fn write_sql(&self, buf: &mut String, dialect: Dialect) {
         buf.push_quoted(&self.name);
         buf.push(' ');
         buf.push_str(&self.typ.to_sql(dialect));
+        if let Some(generated) = &self.generated {
+            buf.push(' ');
+            buf.push_sql(generated, dialect);
+        }
         if !self.nullable {
             buf.push_str(" NOT NULL");
         }

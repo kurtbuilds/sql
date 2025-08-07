@@ -1,14 +1,8 @@
 use std::collections::HashMap;
 
 use crate::query::{AlterTable, Update};
+use crate::{AlterAction, Constraint, Dialect, DropTable, Index, Schema, Table, ToSql};
 use anyhow::Result;
-
-use crate::query::AlterAction;
-use crate::query::CreateIndex;
-use crate::query::CreateTable;
-use crate::query::DropTable;
-use crate::schema::{Constraint, Schema};
-use crate::{Dialect, ToSql};
 use topo_sort::{SortResults, TopoSort};
 
 #[derive(Debug, Clone, Default)]
@@ -32,11 +26,11 @@ pub fn migrate(current: Schema, desired: Schema, options: &MigrationOptions) -> 
     let mut debug_results = vec![];
     let mut statements = Vec::new();
     // new tables
-    for (_name, table) in desired_tables
+    for (_name, &table) in desired_tables
         .iter()
         .filter(|(name, _)| !current_tables.contains_key(*name))
     {
-        let statement = Statement::CreateTable(CreateTable::from_table(table));
+        let statement = Statement::CreateTable(table.clone());
         statements.push(statement);
     }
 
@@ -240,8 +234,8 @@ impl Migration {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Statement {
-    CreateTable(CreateTable),
-    CreateIndex(CreateIndex),
+    CreateTable(Table),
+    CreateIndex(Index),
     AlterTable(AlterTable),
     DropTable(DropTable),
     Update(Update),
@@ -311,9 +305,9 @@ impl DebugResults {
 mod tests {
     use super::*;
 
-    use crate::schema::{Column, Constraint, ForeignKey};
     use crate::Table;
     use crate::Type;
+    use crate::schema::{Column, Constraint, ForeignKey};
 
     #[test]
     fn test_drop_table() {
@@ -365,6 +359,7 @@ mod tests {
             primary_key: true,
             default: None,
             constraint: None,
+            generated: None,
         });
 
         let user_table = Table::new("user")
@@ -375,6 +370,7 @@ mod tests {
                 primary_key: true,
                 default: None,
                 constraint: None,
+                generated: None,
             })
             .column(Column {
                 name: "team_id".to_string(),
@@ -386,6 +382,7 @@ mod tests {
                     table: "team".to_string(),
                     columns: vec!["id".to_string()],
                 })),
+                generated: None,
             });
 
         schema_with_tables.tables.push(user_table);

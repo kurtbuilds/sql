@@ -74,7 +74,9 @@ impl FromStr for Type {
             "character varying" => Text,
             "varchar" => Text,
             "integer" => I32,
-            "ARRAY" => panic!("Encountered `ARRAY` type when reading data schema from database. ARRAY must be handled separately."),
+            "ARRAY" => panic!(
+                "Encountered `ARRAY` type when reading data schema from database. ARRAY must be handled separately."
+            ),
             s => Other(s.to_string()),
         };
         Ok(s)
@@ -115,11 +117,11 @@ impl ToSql for Type {
                 return;
             }
             Other(z) => {
-                #[cfg(feature = "tracing")]
-                tracing::warn!(z, "Unknown type. SQL may not be valid.");
-                buf.push_str("/* Unknown type: ");
+                // #[cfg(feature = "tracing")]
+                // tracing::warn!(z, "Unknown type. SQL may not be valid.");
+                // buf.push_str("/* Unknown type: ");
                 buf.push_str(z);
-                buf.push_str(" */");
+                // buf.push_str(" */");
                 return;
             }
         };

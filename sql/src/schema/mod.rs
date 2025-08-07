@@ -1,14 +1,16 @@
 mod column;
 mod constraint;
+mod generated;
 mod index;
 mod table;
 mod r#type;
 
-pub use column::Column;
-pub use constraint::{Constraint, ForeignKey};
-pub use index::Index;
-pub use table::Table;
-pub use r#type::Type;
+pub use column::*;
+pub use constraint::*;
+pub use generated::*;
+pub use index::*;
+pub use table::*;
+pub use r#type::*;
 
 use crate::migrate::{Migration, MigrationOptions, migrate};
 use anyhow::Result;

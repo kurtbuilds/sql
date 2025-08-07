@@ -1,6 +1,6 @@
 use anyhow::{Error, Result};
 use itertools::Itertools;
-use sql::{Column, Schema, Table, schema};
+use sql::{Column, Expr, Generated, GenerationTime, GenerationValue, Schema, Table, schema};
 use sqlx::PgConnection;
 use std::str::FromStr;
 
@@ -10,7 +10,7 @@ pub trait FromPostgres: Sized {
 }
 
 #[derive(sqlx::FromRow)]
-pub struct SchemaColumn {
+pub struct ColumnRow {
     pub table_name: String,
     pub column_name: String,
     #[allow(dead_code)]
@@ -20,14 +20,18 @@ pub struct SchemaColumn {
     pub numeric_precision: Option<i32>,
     pub numeric_scale: Option<i32>,
     pub inner_type: Option<String>,
+    pub primary_key: bool,
+    pub generation_time: Option<String>,
+    pub generation_expression: Option<String>,
+    pub identity_generation: Option<String>,
 }
 
 pub async fn query_schema_columns(
     conn: &mut PgConnection,
     schema_name: &str,
-) -> Result<Vec<SchemaColumn>> {
+) -> Result<Vec<ColumnRow>> {
     let s = include_str!("sql/query_columns.sql");
-    let result = sqlx::query_as::<_, SchemaColumn>(s)
+    let result = sqlx::query_as::<_, ColumnRow>(s)
         .bind(schema_name)
         .fetch_all(conn)
         .await?;
@@ -74,10 +78,14 @@ pub async fn query_constraints(
 
 #[derive(Debug, sqlx::FromRow)]
 pub struct Index {
-    pub schemaname: String,
-    pub tablename: String,
-    pub indexname: String,
-    pub indexdef: String,
+    pub schema: String,
+    pub table: String,
+    pub name: String,
+    // text of the index definition
+    pub statement: String,
+    pub unique: bool,
+    pub kind: String,
+    pub columns: Vec<String>,
 }
 
 pub async fn query_indices(conn: &mut PgConnection, schema_name: &str) -> Result<Vec<Index>> {
@@ -124,7 +132,30 @@ pub async fn query_triggers(conn: &mut PgConnection, schema_name: &str) -> Resul
         .await?)
 }
 
-impl TryInto<Column> for SchemaColumn {
+fn parse_generated(
+    time: Option<String>,
+    expr: Option<String>,
+    identity: Option<String>,
+) -> Option<Generated> {
+    let time = time?;
+    let time = match time.as_str() {
+        "ALWAYS" => GenerationTime::Always,
+        "BY DEFAULT" => GenerationTime::ByDefault,
+        _ => return None,
+    };
+    let value = if let Some(identity) = identity
+        && identity == "YES"
+    {
+        GenerationValue::Identity
+    } else if let Some(expr) = expr {
+        GenerationValue::Expr(Expr::Raw(expr))
+    } else {
+        return None;
+    };
+    Some(Generated { time, value })
+}
+
+impl TryInto<Column> for ColumnRow {
     type Error = Error;
 
     fn try_into(self) -> std::result::Result<Column, Self::Error> {
@@ -147,6 +178,11 @@ impl TryInto<Column> for SchemaColumn {
             }
             z => schema::Type::from_str(z)?,
         };
+        let generated = parse_generated(
+            self.generation_time,
+            self.generation_expression,
+            self.identity_generation,
+        );
         Ok(Column {
             name: self.column_name.clone(),
             typ,
@@ -154,43 +190,30 @@ impl TryInto<Column> for SchemaColumn {
             primary_key: false,
             default: None,
             constraint: None,
+            generated,
         })
     }
 }
 
 impl FromPostgres for Schema {
-    async fn try_from_postgres(conn: &mut PgConnection, schema_name: &str) -> Result<Schema> {
-        let column_schemas = query_schema_columns(conn, schema_name).await?;
+    async fn try_from_postgres(conn: &mut PgConnection, schema: &str) -> Result<Schema> {
+        let column_schemas = query_schema_columns(conn, schema).await?;
         let mut tables = column_schemas
             .into_iter()
             .chunk_by(|c| c.table_name.clone())
             .into_iter()
             .map(|(table_name, group)| {
                 let columns = group
-                    .map(|c: SchemaColumn| c.try_into())
+                    .map(|c: ColumnRow| c.try_into())
                     .collect::<Result<Vec<_>, Error>>()?;
                 Ok(Table {
-                    schema: Some(schema_name.to_string()),
+                    schema: Some(schema.to_string()),
                     name: table_name,
                     columns,
-                    indexes: vec![],
                 })
             })
             .collect::<Result<Vec<_>, Error>>()?;
-        let mut it_tables = tables.iter_mut().peekable();
-        let indices = query_indices(conn, schema_name).await?;
-        for index in indices {
-            while &index.tablename != &it_tables.peek().unwrap().name {
-                it_tables.next();
-            }
-            let t = it_tables.peek_mut().unwrap();
-            t.indexes.push(sql::Index {
-                name: index.indexname,
-                columns: Vec::new(),
-            });
-        }
-
-        let constraints = query_constraints(conn, schema_name).await?;
+        let constraints = query_constraints(conn, schema).await?;
         let mut it_tables = tables.iter_mut().peekable();
         for fk in constraints {
             while &fk.table_name != &it_tables.peek().unwrap().name {
@@ -209,7 +232,7 @@ impl FromPostgres for Schema {
         }
 
         // Degenerate case but you can have tables with no columns...
-        let table_names = query_table_names(conn, schema_name).await?;
+        let table_names = query_table_names(conn, schema).await?;
         let mut tables_it = tables.iter().peekable();
         let mut empty_tables = Vec::new();
         'outer: for name in table_names {
@@ -220,10 +243,9 @@ impl FromPostgres for Schema {
                 }
             }
             empty_tables.push(Table {
-                schema: Some(schema_name.to_string()),
+                schema: Some(schema.to_string()),
                 name,
                 columns: vec![],
-                indexes: vec![],
             })
         }
         Ok(Schema { tables })
@@ -236,7 +258,7 @@ mod test {
 
     #[test]
     fn test_numeric() {
-        let c = SchemaColumn {
+        let c = ColumnRow {
             table_name: "foo".to_string(),
             column_name: "bar".to_string(),
             ordinal_position: 1,
@@ -245,6 +267,7 @@ mod test {
             numeric_precision: Some(10),
             numeric_scale: Some(2),
             inner_type: None,
+            primary_key: false,
         };
         let column: Column = c.try_into().unwrap();
         assert_eq!(column.typ, schema::Type::Numeric(10, 2));
@@ -252,7 +275,7 @@ mod test {
 
     #[test]
     fn test_integer() {
-        let c = SchemaColumn {
+        let c = ColumnRow {
             table_name: "foo".to_string(),
             column_name: "bar".to_string(),
             ordinal_position: 1,
@@ -261,6 +284,7 @@ mod test {
             numeric_precision: Some(32),
             numeric_scale: Some(0),
             inner_type: None,
+            primary_key: false,
         };
         let column: Column = c.try_into().unwrap();
         assert_eq!(column.typ, schema::Type::I32);

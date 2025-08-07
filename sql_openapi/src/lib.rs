@@ -53,7 +53,6 @@ impl FromOpenApi for Schema {
                 schema: None,
                 name: schema_name.to_case(Case::Snake),
                 columns,
-                indexes: vec![],
             };
             tables.push(table);
         }
@@ -151,6 +150,7 @@ fn schema_to_columns(
             nullable,
             default: None,
             constraint: None,
+            generated: None,
         };
         columns.push(column);
     }
