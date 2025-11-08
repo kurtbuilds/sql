@@ -182,7 +182,6 @@ fn topologically_sort_statements(
             }
 
             // Add this table and its dependencies to the topo_sort
-            dbg!(table_name, &dependencies);
             topo_sort.insert(table_name.clone(), dependencies);
         }
     }
