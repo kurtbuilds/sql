@@ -63,6 +63,8 @@ impl FromStr for Type {
             "boolean" => Boolean,
             "date" => Date,
             "bytea" => Bytes,
+            "blob" => Bytes,
+            "longblob" => Bytes,
             "timestamp with time zone" => DateTime,
             "timestamp without time zone" => NaiveDateTime,
             "interval" => Duration,
@@ -91,7 +93,13 @@ impl ToSql for Type {
             I16 => "smallint",
             I32 => "integer",
             I64 => "bigint",
-            Bytes => "bytea",
+            Bytes => {
+                return buf.push_str(match dialect {
+                    Dialect::Postgres => "bytea",
+                    Dialect::Sqlite => "blob",
+                    Dialect::Mysql => "longblob",
+                });
+            }
             Time => "time without time zone",
             Date => "date",
             DateTime => "timestamptz",
