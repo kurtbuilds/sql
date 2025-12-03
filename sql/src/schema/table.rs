@@ -36,7 +36,7 @@ impl Table {
 
 impl ToSql for Table {
     fn write_sql(&self, buf: &mut String, dialect: Dialect) {
-        buf.push_str("CREATE TABLE ");
+        buf.push_str("CREATE TABLE IF NOT EXISTS ");
         buf.push_table_name(&self.schema, &self.name);
         buf.push_str(" (\n");
         buf.push_sql_sequence(&self.columns, ",\n", dialect);
