@@ -127,7 +127,14 @@ impl ToSql for Expr {
             Expr::Case(c) => c.write_sql(buf, dialect),
             Expr::And(and) => {
                 buf.push('(');
-                buf.push_sql_sequence(&and, " AND ", dialect);
+                for (i, expr) in and.iter().enumerate() {
+                    if i > 0 {
+                        buf.push_str(" AND ");
+                    }
+                    buf.push('(');
+                    expr.write_sql(buf, dialect);
+                    buf.push(')');
+                }
                 buf.push(')');
             }
             Expr::Raw(a) => buf.push_str(a),
@@ -169,5 +176,21 @@ impl ToSql for Operation {
             Operation::Gt => buf.push_str(" > "),
             Operation::Lt => buf.push_str(" < "),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_and_clauses_wrapped_in_parentheses() {
+        let expr = Expr::And(vec![
+            Expr::Raw("a = 1".to_string()),
+            Expr::Raw("b = 2".to_string()),
+            Expr::Raw("c = 3".to_string()),
+        ]);
+        let sql = expr.to_sql(Dialect::Postgres);
+        assert_eq!(sql, "((a = 1) AND (b = 2) AND (c = 3))");
     }
 }

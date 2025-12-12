@@ -412,9 +412,9 @@ ON CONFLICT ("id") DO UPDATE SET
 "name" = excluded."name",
 "email" = excluded."email",
 "updated_at" = CASE WHEN
-("users"."id" IS NOT DISTINCT FROM excluded."id" AND
-"users"."name" IS NOT DISTINCT FROM excluded."name" AND
-"users"."email" IS NOT DISTINCT FROM excluded."email")
+(("users"."id" IS NOT DISTINCT FROM excluded."id") AND
+("users"."name" IS NOT DISTINCT FROM excluded."name") AND
+("users"."email" IS NOT DISTINCT FROM excluded."email"))
 THEN "users"."updated_at"
 ELSE excluded.updated_at END
 "#
