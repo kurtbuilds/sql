@@ -268,6 +268,9 @@ mod test {
             numeric_scale: Some(2),
             inner_type: None,
             primary_key: false,
+            generation_time: None,
+            generation_expression: None,
+            identity_generation: None,
         };
         let column: Column = c.try_into().unwrap();
         assert_eq!(column.typ, schema::Type::Numeric(10, 2));
@@ -285,6 +288,9 @@ mod test {
             numeric_scale: Some(0),
             inner_type: None,
             primary_key: false,
+            generation_time: None,
+            generation_expression: None,
+            identity_generation: None,
         };
         let column: Column = c.try_into().unwrap();
         assert_eq!(column.typ, schema::Type::I32);

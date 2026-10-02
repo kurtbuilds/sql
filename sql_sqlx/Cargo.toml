@@ -12,8 +12,11 @@ path = "src/lib.rs"
 
 [dependencies]
 kurtbuilds_sql.workspace = true
-sqlx = { version = "0.8.2", features = ["runtime-tokio-rustls", "postgres"] }
+sqlx = { version = "0.9.0", features = ["runtime-tokio", "tls-rustls", "postgres"] }
 anyhow.workspace = true
+# sqlx-postgres 0.9 depends on whoami without its `std` feature, so the default username
+# resolves to "anonymous". Enabling `std` here restores the OS username lookup.
+whoami = { version = "2", default-features = false, features = ["std"] }
 itertools.workspace = true
 
 [dev-dependencies]
